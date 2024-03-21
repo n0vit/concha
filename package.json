@@ -1,0 +1,47 @@
+{
+  "name": "concha",
+  "version": "1.0.0",
+  "packageManager": "pnpm@8.12.1",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --import tsx/esm dist/src/app.js",
+    "dev": "NODE_ENV=dev tsx watch src/app.ts",
+    "lint": "tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "nodemon": "^3.1.0",
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@chainsafe/ssz": "^0.15.1",
+    "@lodestar/api": "^1.17.0",
+    "@lodestar/config": "^1.17.0",
+    "@lodestar/params": "^1.17.0",
+    "@lodestar/state-transition": "^1.17.0",
+    "@lodestar/types": "^1.17.0",
+    "@lodestar/utils": "^1.17.0",
+    "@types/lodash": "^4.17.0",
+    "@types/pdfkit": "^0.13.4",
+    "axios": "1.6.7",
+    "bigint-buffer": "^1.1.5",
+    "buffer": "^6.0.3",
+    "csv": "^6.3.8",
+    "csv-generate": "^4.4.0",
+    "date-time": "^4.0.0",
+    "decimal.js": "^10.4.3",
+    "ethers": "^6.11.1",
+    "lodash": "^4.17.21",
+    "moment": "^2.30.1",
+    "pdfkit": "^0.14.0",
+    "tsx": "^4.7.0"
+  }
+}
