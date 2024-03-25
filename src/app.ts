@@ -1,17 +1,13 @@
-import {
-  RewardsPerEpoch,
-  ValidatorRewardsPerEpoch,
-} from "./get-rewards-per-epoch";
+import { RewardsPerEpoch } from "./get-rewards-per-epoch";
 
 import fs from "fs";
-import { makeSummaryTable } from "./make-table";
 
 const main = async () => {
   console.log("start");
 
   const validators = ["19558"];
   const startEpoch = 1;
-  const endEpoch = 2;
+  const endEpoch = 1100;
   const rewards = [
     {
       "19558": {

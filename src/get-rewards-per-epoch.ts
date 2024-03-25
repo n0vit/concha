@@ -1,6 +1,10 @@
 import { Epoch, Slot } from "@lodestar/types";
 import { BeaconApi, Configuration, RewardsApi, ValidatorApi } from "../api";
 import { ethers } from "ethers";
+import DateTime from "moment";
+
+const GENESIS_TIME = 1606824023;
+const SECONDS_PER_SLOT = 12;
 
 export interface ValidatorRewardsPerEpoch {
   attestationSourceReward: number;
@@ -57,24 +61,8 @@ export class RewardsPerEpoch {
     this.elApi = new ethers.JsonRpcProvider(basePathEL);
   }
 
-  private async getTime(validatorSlot: Slot, fisrtSlot: Slot) {
-    try {
-      const blockV2 = await this.beaconApi.getBlockV2(validatorSlot);
-      const time = (
-        await this.elApi.getBlock(
-          blockV2.data.data.message.body.eth1_data.block_hash
-        )
-      )?.timestamp;
-      return time;
-    } catch (e) {
-      const blockV2 = await this.beaconApi.getBlockV2(fisrtSlot);
-      const time = (
-        await this.elApi.getBlock(
-          blockV2.data.data.message.body.eth1_data.block_hash
-        )
-      )?.timestamp;
-      return time;
-    }
+  private getTime(validatorSlot: Slot): number {
+    return GENESIS_TIME + validatorSlot * SECONDS_PER_SLOT;
   }
 
   private async getAttestationRewards(
@@ -109,10 +97,10 @@ export class RewardsPerEpoch {
       for (let i = 0; i < attestationsDuties.length; i++) {
         const attestationDuty = attestationsDuties[i];
         const slot = Number(attestationDuty.slot);
-        const time = await this.getTime(slot, epoch * 32);
+        const time = this.getTime(slot);
         attestationsDutiesData[attestationDuty.validator_index] = {
-          time: time ?? 0,
-          slot: slot ?? 0,
+          time,
+          slot,
         };
       }
 
@@ -133,59 +121,49 @@ export class RewardsPerEpoch {
     return null;
   }
 
-  // async getProposerReward(epoch: Epoch, validatorIndices: string[]) {
-  //   console.log("start getProposerReward", epoch, validatorIndices);
+  async getSyncCommitteeRewards(
+    epoch: Epoch,
+    slotsPerEpoch: number = 32,
+    validatorIndices: string[]
+  ) {
+    try {
+      const committeResults = [];
+      const syncCommitteeDuties =
+        await this.validatorApi.getSyncCommitteeDuties(validatorIndices, epoch);
+      if (syncCommitteeDuties.data.data.length > 0) {
+        const startSlot = epoch * slotsPerEpoch;
+        const endSlot = startSlot + slotsPerEpoch - 1;
 
-  //   const proposerDutiesResponse = await this.validatorApi.getProposerDuties(
-  //     epoch
-  //   );
-  //   const foundedPropsers: Record<
-  //     string,
-  //     { slotIncluded: boolean; txFee: number }
-  //   > = {};
-  //   console.log("pDRs", proposerDutiesResponse.data.data.length);
-  //   if (proposerDutiesResponse.status === 200) {
-  //     const proposerDuties = proposerDutiesResponse.data.data;
-  //     for (let index = 0; index < proposerDuties.length; index++) {
-  //       const proposer = proposerDuties[index];
-  //       for (let i = 0; i < validatorIndices.length; i++) {
-  //         if (proposer.validator_index === validatorIndices[i]) {
-  //           console.log("found proposer", proposer);
-  //           try {
-  //             const blockV2 = await this.beaconApi.getBlockV2(proposer.slot);
-  //             if (blockV2.status === 200) {
-  //               const txFee = await this.getBlockFeeRewards(
-  //                 blockV2.data.data.message.body.eth1_data.block_hash
-  //               );
-  //               foundedPropsers[proposer.validator_index] = {
-  //                 slotIncluded: true,
-  //                 txFee,
-  //               };
-  //             }
-  //             throw new Error();
-  //           } catch (e) {
-  //             console.log("get proposer reward error", e);
-  //             foundedPropsers[proposer.validator_index] = {
-  //               txFee: 0,
-  //               slotIncluded: false,
-  //             };
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  async syncCommitteeRewards(slot: Slot, validatorIndices: string[]) {
-    const syncCommitteeRewardsResponse =
-      await this.rewardApi.getSyncCommitteeRewards(slot, validatorIndices);
-    if (syncCommitteeRewardsResponse.status === 200) {
-      return syncCommitteeRewardsResponse.data.data.map((s) => ({
-        validatorIndex: s.validator_index,
-        syncCommitteeReward: Number(s.reward),
-      }));
+        for (let slotNumber = startSlot; slotNumber <= endSlot; slotNumber++) {
+          console.log("get data for slot", slotNumber);
+          try {
+            const syncCommitteeRewards =
+              await this.rewardApi.getSyncCommitteeRewards(
+                slotNumber,
+                validatorIndices
+              );
+            if (
+              syncCommitteeRewards.status === 200 &&
+              syncCommitteeRewards.data.data.length > 0
+            ) {
+              committeResults.push(
+                syncCommitteeRewards.data.data.map((s) => ({
+                  validatorIndex: s.validator_index,
+                  syncCommitteeReward: Number(s.reward),
+                }))
+              );
+            }
+          } catch (e) {
+            // console.log("get sync committee rewards error", slotNumber);
+            continue;
+          }
+        }
+      }
+      return committeResults;
+    } catch (e) {
+      // console.log("syncCommitteeRewards error ", e);
+      return null;
     }
-    return null;
   }
   async getBlockProposerRewards(slot: Slot) {
     const rewardsResponse = await this.rewardApi.getBlockRewards(slot);
@@ -202,30 +180,30 @@ export class RewardsPerEpoch {
     }
     return null;
   }
-
+  /**
+   * Returns an object containing rewards for each validator in the specified epoch.
+   * @param epoch The epoch for which to retrieve rewards.
+   * @param validatorIndices The indices of the validators for whom to retrieve rewards.
+   */
   public async getRewardsPerEpoch(epoch: Epoch, validatorIndices: string[]) {
     // console.log("start getRewardsPerEpoch", epoch, validatorIndices);
     try {
-      const [attestationsRewards, proposerDutiesResponse, syncCommitteeDuties] =
-        await Promise.all([
-          this.getAttestationRewards(epoch, validatorIndices),
-          this.validatorApi.getProposerDuties(epoch),
-          this.validatorApi.getSyncCommitteeDuties(validatorIndices, epoch),
-        ]);
+      const [attestationsRewards, proposerDutiesResponse] = await Promise.all([
+        this.getAttestationRewards(epoch, validatorIndices),
+        this.validatorApi.getProposerDuties(epoch),
+      ]);
 
       if (proposerDutiesResponse.status !== 200)
         throw new Error("getProposerDuties error");
 
       const proposerDuties = proposerDutiesResponse.data.data;
-      const rewards: Record<string, ValidatorRewardsPerEpoch> = Object.assign(
-        {},
-        ...validatorIndices.map((v) => ({ [v]: baseRewardObject }))
-      );
+      const rewards: Record<string, ValidatorRewardsPerEpoch> = {};
 
-      const slotsPerEpoch = proposerDuties.length;
-      const startSlot = epoch * slotsPerEpoch;
-      const endSlot = startSlot + slotsPerEpoch - 1;
-      const tmpCommitteResults = [];
+      const syncCommitteeRewards = await this.getSyncCommitteeRewards(
+        epoch,
+        proposerDuties.length,
+        validatorIndices
+      );
       const tmpProposerResults = [];
 
       console.log(
@@ -248,56 +226,40 @@ export class RewardsPerEpoch {
         }
       }
 
-      if (syncCommitteeDuties.data.data.length > 0) {
-        for (let slotNumber = startSlot; slotNumber <= endSlot; slotNumber++) {
-          console.log("get data for slot", slotNumber);
-          try {
-            const syncCommitteeRewards = await this.syncCommitteeRewards(
-              slotNumber,
-              validatorIndices
-            );
-            if (syncCommitteeRewards) {
-              tmpCommitteResults.push(syncCommitteeRewards);
-            }
-          } catch (e) {
-            console.log("get sync committee rewards error", slotNumber);
-            continue;
-          }
-        }
-      }
       for (let i = 0; i < validatorIndices.length; i++) {
         const vildator = validatorIndices[i];
+        rewards[vildator] = Object.assign({}, baseRewardObject);
         const vildatorRewards = rewards[vildator];
-        const syncCommitteeTotalReward = tmpCommitteResults
-          .flatMap((d) => d?.find((v) => v.validatorIndex === vildator))
-          .reduce((a, b) => a + (b?.syncCommitteeReward ?? 0), 0);
-        const proposerTotalRewards = tmpProposerResults
-          .filter((pr) => pr.validatorIndex === vildator)
-          .reduce(
-            (arr, curr) => {
-              arr.attestations += curr.attestations ?? 0;
-              arr.syncAggregate += curr.syncAggregate ?? 0;
-              arr.proposerSlashingInclusion +=
-                curr.proposerSlashingInclusion ?? 0;
-              return arr;
-            },
-            {
-              attestations: 0,
-              proposerSlashingInclusion: 0,
-              syncAggregate: 0,
-            }
-          );
+        const syncCommitteeTotalReward =
+          syncCommitteeRewards !== null
+            ? syncCommitteeRewards
+                .flatMap((d) => d?.find((v) => v.validatorIndex === vildator))
+                .reduce((a, b) => a + (b?.syncCommitteeReward ?? 0), 0)
+            : 0;
+        const proposerTotalRewards =
+          tmpProposerResults.length > 0
+            ? tmpProposerResults
+                .filter((pr) => pr.validatorIndex === vildator)
+                .reduce(
+                  (arr, curr) => {
+                    arr.attestations += curr.attestations ?? 0;
+                    arr.syncAggregate += curr.syncAggregate ?? 0;
+                    arr.proposerSlashingInclusion +=
+                      curr.proposerSlashingInclusion ?? 0;
+                    return arr;
+                  },
+                  {
+                    attestations: 0,
+                    proposerSlashingInclusion: 0,
+                    syncAggregate: 0,
+                  }
+                )
+            : {
+                attestations: 0,
+                proposerSlashingInclusion: 0,
+                syncAggregate: 0,
+              };
 
-        // console.log(
-        //   "propserTotalRewards",
-        //   tmpProposerResults,
-        //   proposerTotalRewards
-        // );
-        // console.log(
-        //   "syncCommitteeTotalReward",
-        //   tmpCommitteResults,
-        //   syncCommitteeTotalReward
-        // );
         const attestation = attestationsRewards?.find(
           (at) => at.validatorIndex === vildator
         );
@@ -319,8 +281,9 @@ export class RewardsPerEpoch {
         }
 
         if (attestation) {
-          if (attestation.head > 0)
+          if (attestation.head > 0) {
             vildatorRewards.attestationHeadReward = attestation.head;
+          }
           // else throw Error(`retrieved negative attestation head reward for validator ${vildator}, ${attestation.head}`)
           vildatorRewards[
             attestation.target > 0
@@ -348,7 +311,9 @@ export class RewardsPerEpoch {
         vildatorRewards.total = total;
         vildatorRewards.epoch = epoch;
       }
+
       console.log("rewards", JSON.stringify(rewards));
+      return rewards;
     } catch (e) {
       console.log("getRewardsPerEpoch error", e);
       return null;
