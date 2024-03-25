@@ -8,6 +8,7 @@ export interface ValidatorRewardsPerEpoch {
   attestationTargetReward: number;
   attestationTargetPenalty: number;
   attestationHeadReward: number;
+  attestationSlot: number;
   finalityDelayPenalty: number;
   proposerSlashingInclusionReward: number;
   proposerAttestationInclusionReward: number;
@@ -16,7 +17,6 @@ export interface ValidatorRewardsPerEpoch {
   syncCommitteePenalty: number;
   slashingReward: number;
   slashingPenalty: number;
-  txDeeRewardWei: number;
   proposalsMissed: number;
   timestamp: number;
   total: number;
@@ -29,6 +29,7 @@ const baseRewardObject: ValidatorRewardsPerEpoch = {
   attestationTargetReward: 0,
   attestationTargetPenalty: 0,
   attestationHeadReward: 0,
+  attestationSlot: 0,
   finalityDelayPenalty: 0,
   proposerSlashingInclusionReward: 0,
   proposerAttestationInclusionReward: 0,
@@ -37,10 +38,11 @@ const baseRewardObject: ValidatorRewardsPerEpoch = {
   syncCommitteePenalty: 0,
   slashingReward: 0,
   slashingPenalty: 0,
-  txDeeRewardWei: 0,
+  // txDeeRewardWei: 0,
   proposalsMissed: 0,
   timestamp: 0,
   total: 0,
+
   epoch: 0,
 };
 export class RewardsPerEpoch {
@@ -85,11 +87,6 @@ export class RewardsPerEpoch {
         this.validatorApi.getAttesterDuties(validatorIndices, epoch),
       ]
     );
-    console.log(
-      "att",
-      attestationsResponse.status,
-      attestationDutiesResponse.status
-    );
     if (
       attestationsResponse.status === 200 &&
       attestationDutiesResponse.status === 200
@@ -104,29 +101,32 @@ export class RewardsPerEpoch {
         inactivity: string;
       }>;
 
-      const attestationTimes: Record<string, number> = {};
+      const attestationsDutiesData: Record<
+        string,
+        { time: number; slot: number }
+      > = {};
 
       for (let i = 0; i < attestationsDuties.length; i++) {
         const attestationDuty = attestationsDuties[i];
-        const time = await this.getTime(
-          Number(attestationDuty.slot),
-          epoch * 32
-        );
-        attestationTimes[attestationDuty.validator_index] = time ?? 0;
+        const slot = Number(attestationDuty.slot);
+        const time = await this.getTime(slot, epoch * 32);
+        attestationsDutiesData[attestationDuty.validator_index] = {
+          time: time ?? 0,
+          slot: slot ?? 0,
+        };
       }
 
       return attestations.map((at) => {
         const target = Number(at.target);
         const source = Number(at.source);
         const head = Number(at.head);
-        const attested = !(head < 0 || target < 0 || source < 0);
         return {
           validatorIndex: at.validator_index,
           target,
           source,
           head,
-          attested,
-          time: attestationTimes[at.validator_index] ?? 0,
+          time: attestationsDutiesData[at.validator_index].time ?? 0,
+          slot: attestationsDutiesData[at.validator_index].slot ?? 0,
         };
       });
     }
@@ -204,12 +204,14 @@ export class RewardsPerEpoch {
   }
 
   public async getRewardsPerEpoch(epoch: Epoch, validatorIndices: string[]) {
-    console.log("start getRewardsPerEpoch", epoch, validatorIndices);
+    // console.log("start getRewardsPerEpoch", epoch, validatorIndices);
     try {
-      const [attestationsRewards, proposerDutiesResponse] = await Promise.all([
-        this.getAttestationRewards(epoch, validatorIndices),
-        this.validatorApi.getProposerDuties(epoch),
-      ]);
+      const [attestationsRewards, proposerDutiesResponse, syncCommitteeDuties] =
+        await Promise.all([
+          this.getAttestationRewards(epoch, validatorIndices),
+          this.validatorApi.getProposerDuties(epoch),
+          this.validatorApi.getSyncCommitteeDuties(validatorIndices, epoch),
+        ]);
 
       if (proposerDutiesResponse.status !== 200)
         throw new Error("getProposerDuties error");
@@ -222,7 +224,7 @@ export class RewardsPerEpoch {
 
       const slotsPerEpoch = proposerDuties.length;
       const startSlot = epoch * slotsPerEpoch;
-      let endSlot = startSlot + slotsPerEpoch - 1;
+      const endSlot = startSlot + slotsPerEpoch - 1;
       const tmpCommitteResults = [];
       const tmpProposerResults = [];
 
@@ -231,6 +233,7 @@ export class RewardsPerEpoch {
         proposerDuties.length,
         attestationsRewards
       );
+
       for (let index = 0; index < proposerDuties.length; index++) {
         for (let i = 0; i < validatorIndices.length; i++) {
           if (proposerDuties[index].validator_index === validatorIndices[i]) {
@@ -245,22 +248,23 @@ export class RewardsPerEpoch {
         }
       }
 
-      for (let slotNumber = startSlot; slotNumber <= endSlot; slotNumber++) {
-        console.log("get data for slot", slotNumber);
-        try {
-          const syncCommitteeRewards = await this.syncCommitteeRewards(
-            slotNumber,
-            validatorIndices
-          );
-          if (syncCommitteeRewards) {
-            tmpCommitteResults.push(syncCommitteeRewards);
+      if (syncCommitteeDuties.data.data.length > 0) {
+        for (let slotNumber = startSlot; slotNumber <= endSlot; slotNumber++) {
+          console.log("get data for slot", slotNumber);
+          try {
+            const syncCommitteeRewards = await this.syncCommitteeRewards(
+              slotNumber,
+              validatorIndices
+            );
+            if (syncCommitteeRewards) {
+              tmpCommitteResults.push(syncCommitteeRewards);
+            }
+          } catch (e) {
+            console.log("get sync committee rewards error", slotNumber);
+            continue;
           }
-        } catch (e) {
-          console.log("get sync committee rewards error", slotNumber);
-          endSlot += 1;
         }
       }
-
       for (let i = 0; i < validatorIndices.length; i++) {
         const vildator = validatorIndices[i];
         const vildatorRewards = rewards[vildator];
@@ -284,16 +288,16 @@ export class RewardsPerEpoch {
             }
           );
 
-        console.log(
-          "propserTotalRewards",
-          tmpProposerResults,
-          proposerTotalRewards
-        );
-        console.log(
-          "syncCommitteeTotalReward",
-          tmpCommitteResults,
-          syncCommitteeTotalReward
-        );
+        // console.log(
+        //   "propserTotalRewards",
+        //   tmpProposerResults,
+        //   proposerTotalRewards
+        // );
+        // console.log(
+        //   "syncCommitteeTotalReward",
+        //   tmpCommitteResults,
+        //   syncCommitteeTotalReward
+        // );
         const attestation = attestationsRewards?.find(
           (at) => at.validatorIndex === vildator
         );
@@ -328,6 +332,7 @@ export class RewardsPerEpoch {
               ? "attestationSourceReward"
               : "attestationSourceReward"
           ] = attestation.source;
+          vildatorRewards.attestationSlot = attestation.slot;
           vildatorRewards.timestamp = attestation.time;
         }
 
@@ -335,12 +340,6 @@ export class RewardsPerEpoch {
         let total = 0;
         for (let key of keys) {
           if (key !== "timestamp" && key !== "epoch" && key !== "total") {
-            console.log(
-              "add key",
-              key,
-              vildatorRewards[key as keyof typeof vildatorRewards],
-              total
-            );
             total += vildatorRewards[
               key as keyof typeof vildatorRewards
             ] as number;
@@ -349,7 +348,7 @@ export class RewardsPerEpoch {
         vildatorRewards.total = total;
         vildatorRewards.epoch = epoch;
       }
-      console.log("rewards", rewards);
+      console.log("rewards", JSON.stringify(rewards));
     } catch (e) {
       console.log("getRewardsPerEpoch error", e);
       return null;

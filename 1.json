@@ -1,0 +1,163 @@
+[
+  {
+    "19558": {
+      "attestationSourceReward": 3801,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7065,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3555,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "slot": 4640981,
+      "total": 14421,
+      "epoch": 145030
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3800,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7061,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3524,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "slot": 1,
+      "total": 14385,
+      "epoch": 145031
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3799,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 6841,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3431,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "total": 14071,
+      "slot": 1,
+      "epoch": 145032
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3797,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7064,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3409,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662459989,
+      "total": 14270,
+      "slot": 1,
+      "epoch": 145033
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3802,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7063,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3639,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "total": 14504,
+      "slot": 1,
+      "epoch": 145034
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3802,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7063,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3675,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "total": 14540,
+      "slot": 1,
+      "epoch": 145035
+    }
+  },
+  {
+    "19558": {
+      "attestationSourceReward": 3802,
+      "attestationSourcePenalty": 0,
+      "attestationTargetReward": 7065,
+      "attestationTargetPenalty": 0,
+      "attestationHeadReward": 3674,
+      "finalityDelayPenalty": 0,
+      "proposerSlashingInclusionReward": 0,
+      "proposerAttestationInclusionReward": 0,
+      "proposerSyncInclusionReward": 0,
+      "syncCommitteeReward": 0,
+      "syncCommitteePenalty": 0,
+      "slashingReward": 0,
+      "slashingPenalty": 0,
+      "txDeeRewardWei": 0,
+      "proposalsMissed": 0,
+      "timestamp": 1662484561,
+      "total": 14541,
+      "slot": 1,
+      "epoch": 145036
+    }
+  }
+]
