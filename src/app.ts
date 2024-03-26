@@ -12,9 +12,9 @@ const main = async () => {
 
   const validators = ["19558"];
   const startEpoch = 1;
-  const endEpoch = 1100;
-  const rewards = jsn as Record<string, ValidatorRewardsPerEpoch>[];
-  // const vRewards = [];
+  const endEpoch = 272430;
+  // const rewards = jsn as Record<string, ValidatorRewardsPerEpoch>[];
+  const vRewards = [];
   const epochRewardsService = new RewardsPerEpoch(
     {
       // basePath:
@@ -28,22 +28,22 @@ const main = async () => {
     "https://ethereum-archive-epyc-8.allnodes.me:8545/hIoc-SUwH-owHO-PQF4"
   );
 
-  makeSummaryTable(rewards, validators, "pdf");
-  makeDetailsTable(rewards, validators, "csv");
+  // makeSummaryTable(rewards, validators, "pdf");
+  // makeDetailsTable(rewards, validators, "csv");
 
-  // for (let i = startEpoch; i <= endEpoch; i++) {
-  //   const epochRewards = await epochRewardsService.getRewardsPerEpoch(
-  //     i,
-  //     validators
-  //   );
-  //   vRewards.push(epochRewards);
-  // }
+  for (let i = startEpoch; i <= endEpoch; i++) {
+    const epochRewards = await epochRewardsService.getRewardsPerEpoch(
+      i,
+      validators
+    );
+    vRewards.push(epochRewards);
+  }
 
-  // const rJson = JSON.stringify(vRewards);
-  // console.log("total", rJson);
-  // fs.writeFile("myjsonfile.json", rJson, "utf-8", (err) => {
-  //   console.log("er", err);
-  // });
+  const rJson = JSON.stringify(vRewards);
+  console.log("total", rJson);
+  fs.writeFile("myjsonfile.json", rJson, "utf-8", (err) => {
+    console.log("er", err);
+  });
   console.log("stop");
 };
 
