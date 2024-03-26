@@ -12,11 +12,11 @@ const paperX = 595.28;
 const symmaryColumns = ["Epoch", "Total rewards", "Day"];
 const detailsColumns = [
   "Epoch",
-  "Total rewards",
+  "Slot",
   "Attestations",
-  "Sync Commite",
-  "Propser",
-  "Block time",
+  "Sync Commitee",
+  "Propose",
+  "Total",
   "Day",
 ];
 
@@ -26,13 +26,23 @@ export const makeSummaryTable = (
   type: "csv" | "pdf"
 ) => {
   validators.forEach((v) => {
+    console.log("val", v, rewards[0][v].total);
     const mappedRewards = rewards
-      .map((reward) => ({
-        total: reward[v].total,
-        epoch: reward[v].epoch,
-        date: DateTime.unix(reward[v].timestamp),
-      }))
-      .filter(Boolean);
+      .map((reward) => {
+        if (!reward) return undefined;
+        return {
+          total: reward[v].total,
+          epoch: reward[v].epoch,
+          date: DateTime.unix(reward[v].timestamp).utc(false),
+        };
+      })
+      .filter(Boolean) as unknown as Array<{
+      total: string;
+      date: DateTime.Moment;
+      epoch: string;
+    }>;
+
+    if (mappedRewards.length === 0) return null;
 
     const goupedRewards: Array<{
       total: string;
@@ -145,37 +155,71 @@ export const makeDetailsTable = (
   type: "csv" | "pdf"
 ) => {
   validators.forEach((v) => {
-    const mappedRewards = rewards.map((reward) => reward[v]).filter(Boolean);
+    const mappedRewards = rewards
+      .map((reward) => {
+        if (!reward) return undefined;
+        const validatorRewards = reward[v];
+        return {
+          date: DateTime.unix(validatorRewards.timestamp)
+            .utc(false)
+            .format("hh:mm DD.MM.YYYY"),
+          epoch: validatorRewards.epoch.toString(),
+          slot: validatorRewards.attestationSlot.toString(),
+          attestationRewards: GWEI_TO_ETH.mul(
+            validatorRewards.attestationTargetPenalty +
+              validatorRewards.attestationTargetReward +
+              validatorRewards.attestationSourcePenalty +
+              validatorRewards.attestationSourceReward +
+              validatorRewards.attestationHeadReward
+          ),
+          proposerRewards: GWEI_TO_ETH.mul(
+            validatorRewards.proposerAttestationInclusionReward +
+              validatorRewards.proposerSlashingInclusionReward +
+              validatorRewards.proposerSyncInclusionReward
+          ),
+          syncCommiteeRewards: GWEI_TO_ETH.mul(
+            validatorRewards.syncCommitteePenalty +
+              validatorRewards.syncCommitteeReward
+          ),
+          total: GWEI_TO_ETH.mul(validatorRewards.total),
+        } as DetailsRow;
+      })
+      .filter(Boolean) as DetailsRow[];
     const filename = `details-${v}-${DateTime.utc().day()}.${type}`;
     if (type === "csv") {
       const writableStream = fs.createWriteStream(filename);
-      const stringifier = stringify({ header: true, columns: symmaryColumns });
+      const stringifier = stringify({ header: true, columns: detailsColumns });
       mappedRewards.forEach((reward) => {
         stringifier.write(
           [
-            v,
-            reward.syncCommitteeReward,
-            DateTime.unix(reward.timestamp).format("DD-MM-YYYY"),
+            reward.epoch,
+            reward.slot,
+            reward.attestationRewards.toString(),
+            reward.proposerRewards.toString(),
+            reward.syncCommiteeRewards.toString(),
+            reward.total.toString(),
+            reward.date,
           ],
           (err) => {
             console.log("er", err);
           }
         );
-        stringifier.pipe(writableStream);
       });
+      stringifier.pipe(writableStream);
     }
-    // if (type === "pdf") {
-    //   const doc = PdfTemplate();
-    //   generateDetailsTable(doc, mappedRewards);
-    //   doc.end();
-    //   doc.pipe(fs.createWriteStream(filename));
-    // }
+
+    if (type === "pdf") {
+      const doc = PdfTemplate();
+      generateDetailsTable(doc, mappedRewards);
+      doc.end();
+      doc.pipe(fs.createWriteStream(filename));
+    }
   });
 };
 
 function PdfTemplate() {
   let doc = new PDFKit({
-    size: "A4",
+    size: "A3",
     margins: { top: 30, left: 50, right: 50, bottom: 0 },
   });
 
@@ -237,10 +281,10 @@ function generateSummaryTable(
     generateHr(
       doc,
       tableTop + 38 + i * 22,
-      (items.length >= 50 && i != 0 && i % 7 === 0) || i !== items.length - 1
+      (items.length >= 50 && i != 0 && i % 50 === 0) || i !== items.length - 1
     );
-    if (items.length >= 50 && i != 0 && i % 7 === 0) {
-      doc.addPage({ size: "A4", margin: 50 });
+    if (items.length >= 50 && i != 0 && i % 50 === 0) {
+      doc.addPage({ size: "A3", margin: 50 });
       tableTop = 0;
       items = items.slice(i);
       i = 0;
@@ -266,25 +310,26 @@ function generateSummaryTable(
   //   .text("32", 310, tableBottom + 80, { align: "right" });
 }
 
-function generateDetailsTable(
-  doc: PDFKit.PDFDocument,
-  data: {
-    date: string;
-    epoch: number;
-    attestationSlot: number;
-    attestationRewards: number;
-    proposerRewards: number;
-    syncCommiteeRewards: number;
-  }[]
-) {
+interface DetailsRow {
+  date: string;
+  epoch: string;
+  slot: string;
+  total: Decimal;
+  attestationRewards: Decimal;
+  proposerRewards: Decimal;
+  syncCommiteeRewards: Decimal;
+}
+
+function generateDetailsTable(doc: PDFKit.PDFDocument, data: DetailsRow[]) {
   let i;
   let tableTop = 160;
   doc.font("Helvetica-Bold");
   doc.fillColor("black");
-  generateSymmaryTableRow(doc, tableTop, "Epochs", "Rewards", "Date");
+  generateDetailsTableHeaderRow(doc, tableTop);
   generateHr(doc, tableTop + 16);
   doc.font("Helvetica");
   let items = data;
+  let pageNum = 1;
   for (i = 0; i < items.length; i++) {
     const item = items[i];
 
@@ -294,10 +339,18 @@ function generateDetailsTable(
     generateHr(
       doc,
       tableTop + 38 + i * 22,
-      (items.length >= 50 && i != 0 && i % 7 === 0) || i !== items.length - 1
+      (items.length >= (pageNum > 1 ? 50 : 40) &&
+        i != 0 &&
+        i % (pageNum > 1 ? 50 : 40) === 0) ||
+        i !== items.length - 1
     );
-    if (items.length >= 50 && i != 0 && i % 7 === 0) {
-      doc.addPage({ size: "A4", margin: 50 });
+    if (
+      items.length >= (pageNum > 1 ? 50 : 40) &&
+      i != 0 &&
+      i % (pageNum > 1 ? 50 : 40) === 0
+    ) {
+      pageNum++;
+      doc.addPage({ size: "A3", margin: 50 });
       tableTop = 0;
       items = items.slice(i);
       i = 0;
@@ -380,14 +433,13 @@ function generatRightBorder(doc: PDFKit.PDFDocument, x: number, y: number) {
     .stroke();
 }
 
-function generateDetailsTableRow(
+function generateDetailsTableHeaderRow(
   doc: PDFKit.PDFDocument,
   y: number,
-  rewards: ValidatorRewardsPerEpoch,
   color: string = "#FFF"
 ) {
   doc
-    .rect(50, y - 5, 500, 20)
+    .rect(20, y - 5, 970, 20)
     .fillOpacity(0.6)
     .fillAndStroke(color, color)
 
@@ -395,11 +447,39 @@ function generateDetailsTableRow(
     .fillColor("black")
     .opacity(1)
     .fontSize(14)
-    .text(rewards.epoch.toString(), 50, y, { width: 50 })
-    .text(rewards.attestationSlot.toString(), 100, y, { width: 50 })
-    .text(rewards.attestationHeadReward.toString(), 200, y, { width: 275 })
-    .text(DateTime.unix(rewards.timestamp).format("hh:mm DD MM YYYY"), 475, y, {
-      width: 80,
+    .text("Epoch", 50, y, { width: 100 })
+    .text("Slot", 150, y, { width: 100 })
+    .text("Attestation", 250, y, { width: 180 })
+    .text("Sync commitee", 430, y, { width: 180 })
+    .text("Propose", 610, y, { width: 180 })
+    .text("Date", 790, y, {
+      width: 180,
+      align: "left",
+    });
+}
+
+function generateDetailsTableRow(
+  doc: PDFKit.PDFDocument,
+  y: number,
+  rewards: DetailsRow,
+  color: string = "#FFF"
+) {
+  doc
+    .rect(20, y - 5, 970, 20)
+    .fillOpacity(0.6)
+    .fillAndStroke(color, color)
+
+    // .fillColor("white", 50)
+    .fillColor("black")
+    .opacity(1)
+    .fontSize(14)
+    .text(rewards.epoch.toString(), 50, y, { width: 100 })
+    .text(rewards.slot.toString(), 150, y, { width: 100 })
+    .text(rewards.attestationRewards.toString(), 250, y, { width: 150 })
+    .text(rewards.proposerRewards.toString(), 400, y, { width: 150 })
+    .text(rewards.proposerRewards.toString(), 580, y, { width: 150 })
+    .text(rewards.date, 740, y, {
+      width: 180,
       align: "left",
     });
 }

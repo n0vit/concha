@@ -1,11 +1,10 @@
 import { Epoch, Slot } from "@lodestar/types";
 import { BeaconApi, Configuration, RewardsApi, ValidatorApi } from "../api";
 import { ethers } from "ethers";
-import DateTime from "moment";
 
 const GENESIS_TIME = 1606824023;
 const SECONDS_PER_SLOT = 12;
-
+const ALTAIR_EPOCH = 74240;
 export interface ValidatorRewardsPerEpoch {
   attestationSourceReward: number;
   attestationSourcePenalty: number;
@@ -14,14 +13,16 @@ export interface ValidatorRewardsPerEpoch {
   attestationHeadReward: number;
   attestationSlot: number;
   finalityDelayPenalty: number;
+
   proposerSlashingInclusionReward: number;
   proposerAttestationInclusionReward: number;
   proposerSyncInclusionReward: number;
+
   syncCommitteeReward: number;
   syncCommitteePenalty: number;
-  slashingReward: number;
-  slashingPenalty: number;
-  proposalsMissed: number;
+  // slashingReward: number;
+  // slashingPenalty: number;
+  // proposalsMissed: number;
   timestamp: number;
   total: number;
   epoch: Epoch;
@@ -40,22 +41,21 @@ const baseRewardObject: ValidatorRewardsPerEpoch = {
   proposerSyncInclusionReward: 0,
   syncCommitteeReward: 0,
   syncCommitteePenalty: 0,
-  slashingReward: 0,
-  slashingPenalty: 0,
-  // txDeeRewardWei: 0,
-  proposalsMissed: 0,
+  // slashingReward: 0,
+  // slashingPenalty: 0,
+  // proposalsMissed: 0,
   timestamp: 0,
   total: 0,
-
   epoch: 0,
 };
 export class RewardsPerEpoch {
-  private beaconApi: BeaconApi;
+  // private beaconApi: BeaconApi;
   private validatorApi: ValidatorApi;
   private rewardApi: RewardsApi;
   private elApi: ethers.JsonRpcProvider;
+
   constructor(configuration: Configuration, basePathEL: string) {
-    this.beaconApi = new BeaconApi(configuration);
+    // this.beaconApi = new BeaconApi(configuration);
     this.validatorApi = new ValidatorApi(configuration);
     this.rewardApi = new RewardsApi(configuration);
     this.elApi = new ethers.JsonRpcProvider(basePathEL);
@@ -87,6 +87,7 @@ export class RewardsPerEpoch {
         target: string;
         source: string;
         inactivity: string;
+        inclusion_delay: string;
       }>;
 
       const attestationsDutiesData: Record<
@@ -108,8 +109,10 @@ export class RewardsPerEpoch {
         const target = Number(at.target);
         const source = Number(at.source);
         const head = Number(at.head);
+        const inclusionDelay = Number(at.inclusion_delay);
         return {
           validatorIndex: at.validator_index,
+          inclusionDelay,
           target,
           source,
           head,
@@ -121,11 +124,12 @@ export class RewardsPerEpoch {
     return null;
   }
 
-  async getSyncCommitteeRewards(
+  private async getSyncCommitteeRewards(
     epoch: Epoch,
     slotsPerEpoch: number = 32,
     validatorIndices: string[]
   ) {
+    if (epoch < ALTAIR_EPOCH) return null;
     try {
       const committeResults = [];
       const syncCommitteeDuties =
@@ -165,7 +169,7 @@ export class RewardsPerEpoch {
       return null;
     }
   }
-  async getBlockProposerRewards(slot: Slot) {
+  private async getBlockProposerRewards(slot: Slot) {
     const rewardsResponse = await this.rewardApi.getBlockRewards(slot);
     if (rewardsResponse.status === 200) {
       const rewards = rewardsResponse.data.data;
@@ -297,12 +301,21 @@ export class RewardsPerEpoch {
           ] = attestation.source;
           vildatorRewards.attestationSlot = attestation.slot;
           vildatorRewards.timestamp = attestation.time;
+
+          if (attestation.inclusionDelay < 0) {
+            vildatorRewards.finalityDelayPenalty = attestation.inclusionDelay;
+          }
         }
 
         const keys = Object.keys(vildatorRewards);
         let total = 0;
         for (let key of keys) {
-          if (key !== "timestamp" && key !== "epoch" && key !== "total") {
+          if (
+            key !== "timestamp" &&
+            key !== "epoch" &&
+            key !== "total" &&
+            key !== "attestationSlot"
+          ) {
             total += vildatorRewards[
               key as keyof typeof vildatorRewards
             ] as number;
@@ -320,32 +333,3 @@ export class RewardsPerEpoch {
     }
   }
 }
-// async getBlockFeeRewards(blockHash: string): Promise<number> {
-//   console.log("start getBlockFeeRewards with blockHash:", blockHash);
-//   const block = await this.elApi.getBlock(blockHash, true);
-//   if (block) {
-//     const txHashes = block.prefetchedTransactions.map((tx) => tx.hash);
-//     console.log("txHashes", txHashes.length, txHashes[0]);
-//     let totalFee = new Decimal(0);
-//     if (txHashes.length > 0) {
-//       for (let index = 0; index < txHashes.length; index++) {
-//         const txHash = txHashes[index];
-//         const txReceipt = await this.elApi.getTransactionReceipt(txHash);
-//         if (txReceipt && txReceipt.gasUsed && txReceipt.gasPrice) {
-//           totalFee.plus(
-//             (txReceipt?.gasUsed * txReceipt?.gasPrice).toString()
-//           );
-//           console.log(
-//             "getting hash no: ",
-//             index,
-//             (txReceipt.gasUsed * txReceipt.gasPrice).toString(),
-//             totalFee
-//           );
-//         }
-//       }
-//     }
-//     console.log("totalFee", totalFee);
-//   }
-
-//   return 0;
-// }
