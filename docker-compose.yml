@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  db:
+    platform: linux/amd64
+    image: postgres:12
+    restart: always
+    ports:
+      - 5471:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7331
+      POSTGRES_DB: allnodes_scanner
+
+  app:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always

@@ -29,5 +29,12 @@ export interface GetAttestationsRewardsResponseData {
    * @type {any}
    * @memberof GetAttestationsRewardsResponseData
    */
-  total_rewards: any;
+  total_rewards: Array<{
+    validator_index: string;
+    head: string;
+    target: string;
+    source: string;
+    inactivity: string;
+    inclusion_delay: string;
+  }>;
 }

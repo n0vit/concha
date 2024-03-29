@@ -1,10 +1,12 @@
-import { ValidatorRewardsPerEpoch } from "./get-rewards-per-epoch";
+import { ValidatorRewardsBase } from "../../entites/validator-rewards";
 import { stringify } from "csv";
 import DateTime from "moment";
 import PDFKit from "pdfkit";
 import fs from "fs";
-import { forEach } from "lodash";
+import { exec } from "@/services/database";
 import Decimal from "decimal.js";
+import { __dirname } from "@/app";
+import { ValidatorRewardsModel } from "@/models/validator-rewards";
 
 const GWEI_TO_ETH = new Decimal(10).pow(-9);
 const parperY = 841.89;
@@ -20,20 +22,28 @@ const detailsColumns = [
   "Day",
 ];
 
-export const makeSummaryTable = (
-  rewards: Record<string, ValidatorRewardsPerEpoch>[],
+export const makeSummaryTable = async (
   validators: string[],
   type: "csv" | "pdf"
 ) => {
-  validators.forEach((v) => {
-    console.log("val", v, rewards[0][v].total);
+  const filenames = [];
+  for (let v = 0; v < validators.length; v++) {
+    const validatorIndex = Number(validators[v]);
+    console.log(validatorIndex, validators[v]);
+    const { rows: rewards } = await exec<ValidatorRewardsModel>(
+      `SELECT epoch,timestamp,total_reward_amount FROM public.validator_rewards WHERE validator_index =$1
+      ORDER BY epoch ASC `,
+      [validatorIndex]
+    );
+
+    console.log("val", v, rewards[0].total_reward_amount);
     const mappedRewards = rewards
       .map((reward) => {
         if (!reward) return undefined;
         return {
-          total: reward[v].total,
-          epoch: reward[v].epoch,
-          date: DateTime.unix(reward[v].timestamp).utc(false),
+          total: reward.total_reward_amount,
+          epoch: reward.epoch,
+          date: DateTime.utc(reward.timestamp).utc(false),
         };
       })
       .filter(Boolean) as unknown as Array<{
@@ -119,18 +129,20 @@ export const makeSummaryTable = (
 
     if (type === "csv") {
       const filename = `summary-${v}-${DateTime.utc().day()}.csv`;
-      const writableStream = fs.createWriteStream(filename);
+      filenames.push(filename);
+      const writableStream = fs.createWriteStream(
+        __dirname + "/public/" + filename
+      );
       const stringifier = stringify({ header: true, columns: symmaryColumns });
 
       goupedRewards.forEach((goupedReward) => {
         stringifier.write(
           [
-            v,
             goupedReward.epoch,
             goupedReward.total,
-            goupedReward.date.format("DD MM YYYY"),
+            goupedReward.date.format("DD.MM.YYYY"),
           ],
-          (err) => {
+          (err: any) => {
             console.log("er", err);
           }
         );
@@ -141,32 +153,44 @@ export const makeSummaryTable = (
     if (type === "pdf") {
       console.log("fa", goupedRewards);
       const filename = `summary-${v}-${DateTime.utc().day()}.pdf`;
+      filenames.push(filename);
       const doc = PdfTemplate();
       generateSummaryTable(doc, goupedRewards);
       doc.end();
       doc.pipe(fs.createWriteStream(filename));
       console.log("saved AS", filename);
     }
-  });
+  }
+  return filenames;
 };
-export const makeDetailsTable = (
-  rewards: Record<string, ValidatorRewardsPerEpoch>[],
+export const makeDetailsTable = async (
   validators: string[],
   type: "csv" | "pdf"
 ) => {
-  validators.forEach((v) => {
+  const filenames = [];
+  for (let v = 0; v < validators.length; v++) {
+    const validatorIndex = Number(validators[v]);
+    console.log(validatorIndex, validators[v]);
+    const { rows: rewards } = await exec<ValidatorRewardsModel>(
+      `SELECT * FROM public.validator_rewards WHERE validator_index =$1
+      ORDER BY epoch ASC `,
+      [validatorIndex]
+    );
+
     const mappedRewards = rewards
       .map((reward) => {
-        if (!reward) return undefined;
-        const validatorRewards = reward[v];
+        const validatorRewards = new ValidatorRewardsModel(
+          reward as any
+        ).toAPI();
+        if (!validatorRewards) return undefined;
         return {
-          date: DateTime.unix(validatorRewards.timestamp)
+          date: DateTime.utc(validatorRewards.timestamp)
             .utc(false)
             .format("hh:mm DD.MM.YYYY"),
-          epoch: validatorRewards.epoch.toString(),
-          slot: validatorRewards.attestationSlot.toString(),
+          epoch: validatorRewards?.epoch?.toString() ?? "",
+          slot: validatorRewards?.attestationSlot?.toString() ?? "",
           attestationRewards: GWEI_TO_ETH.mul(
-            validatorRewards.attestationTargetPenalty +
+            validatorRewards?.attestationTargetPenalty +
               validatorRewards.attestationTargetReward +
               validatorRewards.attestationSourcePenalty +
               validatorRewards.attestationSourceReward +
@@ -186,8 +210,11 @@ export const makeDetailsTable = (
       })
       .filter(Boolean) as DetailsRow[];
     const filename = `details-${v}-${DateTime.utc().day()}.${type}`;
+    filenames.push(filename);
     if (type === "csv") {
-      const writableStream = fs.createWriteStream(filename);
+      const writableStream = fs.createWriteStream(
+        __dirname + "/public/" + filename
+      );
       const stringifier = stringify({ header: true, columns: detailsColumns });
       mappedRewards.forEach((reward) => {
         stringifier.write(
@@ -212,9 +239,10 @@ export const makeDetailsTable = (
       const doc = PdfTemplate();
       generateDetailsTable(doc, mappedRewards);
       doc.end();
-      doc.pipe(fs.createWriteStream(filename));
+      doc.pipe(fs.createWriteStream(__dirname + "/public/" + filename));
     }
-  });
+  }
+  return filenames;
 };
 
 function PdfTemplate() {

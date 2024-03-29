@@ -1,50 +1,60 @@
-import {
-  RewardsPerEpoch,
-  ValidatorRewardsPerEpoch,
-} from "./get-rewards-per-epoch";
+import cors from "cors";
+import { EthRewards } from "./core/ethereum";
+import path from "path";
+import { makeDetailsTable, makeSummaryTable } from "./core/ethereum/make-table";
+import express, { Request, Response, Application } from "express";
+import bodyParser from "body-parser";
+import { fileURLToPath } from "url";
 
-import jsn from "../myjsonfile.json";
-import fs from "fs";
-import { makeDetailsTable, makeSummaryTable } from "./make-table";
+const __filename = fileURLToPath(import.meta.url);
+export const __dirname = path.dirname(__filename);
 
-const main = async () => {
-  console.log("start");
+const app: Application = express();
+const port = process.env.PORT || 8080;
 
-  const validators = ["19558"];
-  const startEpoch = 1;
-  const endEpoch = 272430;
-  // const rewards = jsn as Record<string, ValidatorRewardsPerEpoch>[];
-  const vRewards = [];
-  const epochRewardsService = new RewardsPerEpoch(
-    {
-      // basePath:
-      // "https://little-patient-brook.quiknode.pro/c50e511c669d66022e3059329c3d6e294d1c93c5",
-      basePath:
-        "https://ethereum-archive-epyc-8.allnodes.me:5052/hIoc-SUwH-owHO-PQF4",
-      baseOptions: {
-        timeout: 300000,
-      },
-    },
-    "https://ethereum-archive-epyc-8.allnodes.me:8545/hIoc-SUwH-owHO-PQF4"
-  );
+app.set("x-powered-by", false);
+app.set("trust proxy", true);
 
-  // makeSummaryTable(rewards, validators, "pdf");
-  // makeDetailsTable(rewards, validators, "csv");
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-  for (let i = startEpoch; i <= endEpoch; i++) {
-    const epochRewards = await epochRewardsService.getRewardsPerEpoch(
-      i,
-      validators
-    );
-    vRewards.push(epochRewards);
-  }
+const staticPath = path.join(__dirname, "public");
+app.use(express.static(staticPath));
 
-  const rJson = JSON.stringify(vRewards);
-  console.log("total", rJson);
-  fs.writeFile("myjsonfile.json", rJson, "utf-8", (err) => {
-    console.log("er", err);
-  });
-  console.log("stop");
-};
+app.get("/", (req: Request, res: Response) => {
+  res.send("Welcome to Express & TypeScript Server");
+});
 
-main();
+app.post("/start-scan", async (req: Request, res: Response) => {
+  res.send("Scan started");
+});
+
+app.get("/summary-table", async (req: Request, res: Response) => {
+  const type = req.query.type as "csv" | "pdf";
+  const validators = JSON.parse(req.query.validators as string) as string[];
+  console.log(typeof validators);
+  const result = await makeSummaryTable(validators, type);
+
+  res.send(result?.join(", "));
+});
+
+app.get("/details-table", async (req: Request, res: Response) => {
+  const type = req.query.type as "csv" | "pdf";
+  const validators = JSON.parse(req.query.validators as string) as string[];
+  console.log(typeof validators);
+  const result = await makeDetailsTable(validators, type);
+
+  res.send(result?.join(", "));
+});
+app.listen(port, () => {
+  EthRewards.EthRewardsCanner(1);
+  console.log(`Server is Fire at http://localhost:${port}`);
+});
+
+//apt install python
+//git clone https://github.com/n0vit/concha
+//curl -fsSL https://get.pnpm.io/install.sh | sh -
+//curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+//source /root/.bashrc
+//nvm install 20
