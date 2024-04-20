@@ -27,7 +27,8 @@ Folder structure has some description for explain relations between folders
 |   |
 │   ├── custom.d.ts
 |   | 
-<i>Logic contains main logic for REST API method and Workers. Can used everywhere. Can contain   cohesion logic between shared and specific services</i>
+<i>Logic contains main logic for REST API method and Workers. <br/>
+ Can used everywhere. Can contain   cohesion logic between shared and specific services</i>
 |   |
 |   ├── <span style="color:yellow">logic</span>
 │   │   └── ethereum
@@ -45,7 +46,7 @@ Folder structure has some description for explain relations between folders
 │   │       └── utils
 │   │           └── index.ts
 |   | 
-<i>Api model as bridge iterface  between  codebase and DB, can impmerent own crud logic</i>
+<i>Api model as bridge iterface  between  codebase and DB, <br/> can implement own crud logic</i>
 |   |
 │   ├── <span style="color:yellow">models</span>
 │   │   ├── attestation-rewards.ts
@@ -61,7 +62,7 @@ Folder structure has some description for explain relations between folders
 |   |
 │   ├── <span style="color:yellow">services</span>
 |   |
-<i>Private - contains specifics services, it primitives functions, that has base logic, <b>private services</b> can have hight cohesion and can use <b>shared services</b> </i>
+<i>Private - contains specifics services, it primitives functions, that has base logic,<br/>  <b>private services</b> can have hight cohesion and can use <b>shared services</b> </i>
 │   │   ├── <span style="color:green"> private</span>
 │   │   │   └── ethrereum
 │   │   │       ├── api - SWAGER BEACOUN NODE API 
@@ -70,7 +71,7 @@ Folder structure has some description for explain relations between folders
 │   │   │       ├── eth-db.ts
 │   │   │       ├── index.ts
 |
-<i>Shared - contains shared services, it can use everywhere,  should  contains only primitive logic</i>
+<i>Shared - contains shared services, it can use everywhere,<br/>  should  contains only primitive logic</i>
 │   │   └── <span style="color:green">shared</span>
 │   │       ├── database
 │   │       │   ├── clients.ts
@@ -90,7 +91,7 @@ Folder structure has some description for explain relations between folders
 │   │           ├── types.ts
 │   │           └── worker.ts
 |
-<i>Types - contains special types, that can be used in many places </i>
+<i>Types - contains special types,<br/> that can be used in many places </i>
 |
 │   ├── <span style="color:green">types</span>
 │   │   ├── ethereum.ts
@@ -103,7 +104,7 @@ Folder structure has some description for explain relations between folders
 │   │   ├── index.ts
 │   │   └── logger.ts
 |
-<i>Workers - contains scripts for execution in separated shells, all of them should be running via pm2 </i>
+<i>Workers - contains scripts for execution in separated shells,<br/> all of them should be running via pm2 </i>
 |
 │   └── <span style="color:green">workers</span> 
 │       └── ethereum
