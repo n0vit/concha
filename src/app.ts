@@ -1,50 +1,37 @@
-import {
-  RewardsPerEpoch,
-  ValidatorRewardsPerEpoch,
-} from "./get-rewards-per-epoch";
+import cors from 'cors';
+import path from 'path';
+import express, { Request, Response, Application } from 'express';
+import bodyParser from 'body-parser';
+// @ts-expect-error
+import enrouten from 'express-enrouten';
+import { fileURLToPath } from 'url';
+import { error } from './utils/errors';
 
-import jsn from "../myjsonfile.json";
-import fs from "fs";
-import { makeDetailsTable, makeSummaryTable } from "./make-table";
+const __filename = fileURLToPath(import.meta.url);
+export const __dirname = path.dirname(__filename);
 
-const main = async () => {
-  console.log("start");
+const app: Application = express();
+const port = process.env.PORT || 8080;
 
-  const validators = ["19558"];
-  const startEpoch = 1;
-  const endEpoch = 272430;
-  // const rewards = jsn as Record<string, ValidatorRewardsPerEpoch>[];
-  const vRewards = [];
-  const epochRewardsService = new RewardsPerEpoch(
-    {
-      // basePath:
-      // "https://little-patient-brook.quiknode.pro/c50e511c669d66022e3059329c3d6e294d1c93c5",
-      basePath:
-        "https://ethereum-archive-epyc-8.allnodes.me:5052/hIoc-SUwH-owHO-PQF4",
-      baseOptions: {
-        timeout: 300000,
-      },
-    },
-    "https://ethereum-archive-epyc-8.allnodes.me:8545/hIoc-SUwH-owHO-PQF4"
-  );
+app.set('x-powered-by', false);
+app.set('trust proxy', true);
 
-  // makeSummaryTable(rewards, validators, "pdf");
-  // makeDetailsTable(rewards, validators, "csv");
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-  for (let i = startEpoch; i <= endEpoch; i++) {
-    const epochRewards = await epochRewardsService.getRewardsPerEpoch(
-      i,
-      validators
-    );
-    vRewards.push(epochRewards);
-  }
+const staticPath = path.join(__dirname, 'public');
+const staticLogPath = path.join(__dirname, 'public/logs');
 
-  const rJson = JSON.stringify(vRewards);
-  console.log("total", rJson);
-  fs.writeFile("myjsonfile.json", rJson, "utf-8", (err) => {
-    console.log("er", err);
-  });
-  console.log("stop");
-};
+app.use(express.static(staticPath));
+app.use(express.static(staticLogPath));
 
-main();
+app.get('/', (req: Request, res: Response) => {
+  res.send('Welcome to Express & TypeScript Server');
+});
+
+app.use(enrouten({ directory: path.join(__dirname, 'controllers') }));
+app.use(error);
+app.listen(port, () => {
+  console.log(`Node Server is Fire at http://localhost:${port}`);
+});

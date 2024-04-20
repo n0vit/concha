@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  ethereum2-withdrawals:
+    container_name: ethereum2-withdrawals
+    image: 'allnodes-scanner:${ALLNODES_SCANNER_BACKEND_VERSION:-latest}'
+    platform: '${DOCKER_PLATFORM:-linux/amd64}'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - an-scanner
+    env_file:
+      - .env
+    logging:
+      options:
+        compress: 'true'
+        max-size: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_SIZE:-512m}'
+        max-file: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_FILE:-30}'
+      driver: 'json-file'
+    command:
+      [
+        'pm2-runtime',
+        'process.worker.docker.json',
+        '--use-node-interpreter',
+        '--no-auto-exit',
+        '--only',
+        'ethereum2-withdrawals'
+      ]
+    restart: unless-stopped
+
+  ethereum2-prices:
+    container_name: ethereum2-prices
+    image: 'allnodes-scanner:${ALLNODES_SCANNER_BACKEND_VERSION:-latest}'
+    platform: '${DOCKER_PLATFORM:-linux/amd64}'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - an-scanner
+    env_file:
+      - .env
+    logging:
+      options:
+        compress: 'true'
+        max-size: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_SIZE:-512m}'
+        max-file: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_FILE:-30}'
+      driver: 'json-file'
+    command:
+      [
+        'pm2-runtime',
+        'process.worker.docker.json',
+        '--use-node-interpreter',
+        '--no-auto-exit',
+        '--only',
+        'ethereum2-price'
+      ]
+    restart: unless-stopped
+
+  ethereum2-rewards-scanner:
+    container_name: ethereum2-rewards-scanner
+    image: 'allnodes-scanner:${ALLNODES_SCANNER_BACKEND_VERSION:-latest}'
+    platform: '${DOCKER_PLATFORM:-linux/amd64}'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - an-scanner
+    env_file:
+      - .env
+    logging:
+      options:
+        compress: 'true'
+        max-size: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_SIZE:-512m}'
+        max-file: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_FILE:-30}'
+      driver: 'json-file'
+    command:
+      [
+        'pm2-runtime',
+        'process.worker.docker.json',
+        '--use-node-interpreter',
+        '--no-auto-exit',
+        '--only',
+        'ethereum2-rewards-scanner'
+      ]
+    restart: unless-stopped
+
+  ethereum2-missed-epoch:
+    container_name: ethereum2-missed-epoch
+    image: 'allnodes-scanner:${ALLNODES_SCANNER_BACKEND_VERSION:-latest}'
+    platform: '${DOCKER_PLATFORM:-linux/amd64}'
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - an-scanner
+    env_file:
+      - .env
+    logging:
+      options:
+        compress: 'true'
+        max-size: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_SIZE:-512m}'
+        max-file: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_FILE:-30}'
+      driver: 'json-file'
+    command:
+      [
+        'pm2-runtime',
+        'process.worker.docker.json',
+        '--use-node-interpreter',
+        '--no-auto-exit',
+        '--only',
+        'ethereum2-missed-epoch-scanner'
+      ]
+    restart: unless-stopped
+networks:
+  an-scanner:
+    name: an-scanner
+    driver: overlay

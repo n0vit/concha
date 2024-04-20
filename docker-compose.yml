@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    container_name: concha-db
+    image: postgres:12
+    restart: always
+    ports:
+      - 5471:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 7331
+      POSTGRES_DB: allnodes_scanner
+    networks:
+      - an-scanner
+  app:
+    image: 'allnodes-scanner:${ALLNODES_SCANNER_BACKEND_VERSION:-latest}'
+    platform: '${DOCKER_PLATFORM:-linux/amd64}'
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    logging:
+      options:
+        compress: 'true'
+        max-size: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_SIZE:-512m}'
+        max-file: '${ALLNODES_SCANNER_BACKEND_LOG_MAX_FILE:-30}'
+      driver: 'json-file'
+    init: true
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    networks:
+      - an-scanner
+    restart: always
+
+networks:
+  an-scanner:
+    name: an-scanner
+    driver: overlay
+    attachable: true

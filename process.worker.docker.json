@@ -1,0 +1,68 @@
+{
+  "apps": [
+    {
+      "name": "ethereum2-price",
+      "script": "node --import tsx/esm src/workers/ethereum/prices.ts",
+      "instances": 1,
+      "exec_mode": "fork",
+      "out_file": "/dev/null",
+      "error_file": "/dev/null",
+      "log_file": "/opt/logs/ethereum/price-worker.out",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS Z",
+      "node_args": "--max_old_space_size=8192",
+      "env": {
+        "NODE_ENV": "production",
+        "DB_PORT": 5432,
+        "DB_HOST": "concha-db"
+      }
+    },
+    {
+      "name": "ethereum2-withdrawals",
+      "script": "node --import tsx/esm src/workers/ethereum/withdrawals.ts",
+      "instances": 1,
+      "exec_mode": "fork",
+      "out_file": "/dev/null",
+      "error_file": "/dev/null",
+      "log_file": "/opt/logs/ethereum/withdrawals.out",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS Z",
+      "node_args": "--max_old_space_size=8192",
+      "env": {
+        "NODE_ENV": "production",
+        "DB_PORT": 5432,
+        "DB_HOST": "concha-db"
+      }
+    },
+    {
+      "name": "ethereum2-rewards-scanner",
+      "script": "node --import tsx/esm src/workers/ethereum/rewards-scanner.ts",
+      "instances": 1,
+      "exec_mode": "fork",
+      "out_file": "/dev/null",
+      "error_file": "/dev/null",
+      "log_file": "/opt/logs/ethereum/rewards-scanner.out",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS Z",
+      "node_args": "--max_old_space_size=8192",
+      "env": {
+        "NODE_ENV": "production",
+        "DB_PORT": 5432,
+        "DB_HOST": "concha-db"
+      }
+    },
+    {
+      "name": "ethereum2-missed-epoch-scanner",
+      "script": "node --import tsx/esm src/workers/ethereum/missed-epoch.ts",
+      "instances": 1,
+      "exec_mode": "fork",
+      "out_file": "/dev/null",
+      "error_file": "/dev/null",
+      "log_file": "/opt/logs/ethereum/missed-epoch.out",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss.SSS Z",
+      "node_args": "--max_old_space_size=8192",
+      "env": {
+        "NODE_ENV": "production",
+        "DB_PORT": 5432,
+        "DB_HOST": "concha-db"
+      }
+    }
+  ]
+}
